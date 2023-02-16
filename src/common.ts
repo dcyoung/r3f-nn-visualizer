@@ -61,12 +61,20 @@ export class ModelActivationsHelper {
     return countSynapses(this.modelConfig);
   }
 
-  public get input2DSideLength() {
-    return Math.sqrt(this.modelConfig.inputSize);
+  public get2DSideLength(layerIdx: number) {
+    return Math.ceil(Math.sqrt(this.layerSizes[layerIdx]));
+  }
+
+  public getNeuronCountXYZForLayer(layerIdx: number) {
+    if (this.getIsLayerSquare(layerIdx)) {
+      const s = this.get2DSideLength(layerIdx);
+      return [s, 1, s];
+    }
+    return [this.layerSizes[layerIdx], 1, 1];
   }
 
   public get maxNeuronsX() {
-    return Math.max(...[this.input2DSideLength, ...this.layerSizes.slice(1)]);
+    return Math.max(...[this.get2DSideLength(0), ...this.layerSizes.slice(1)]);
   }
 
   public get maxNeuronsY() {
@@ -87,6 +95,10 @@ export class ModelActivationsHelper {
     return findLastIndex(this.layerStartIdxs, (v) => v <= nIdx);
   }
 
+  public getIsLayerSquare(layerIdx: number) {
+    return this.get2DSideLength(layerIdx) ** 2 == this.layerSizes[layerIdx];
+  }
+
   public getActivation(data: ActivationData, nIdx: number) {
     const layerIdx = this.getLayerIdx(nIdx);
     if (layerIdx == 0) {
@@ -97,19 +109,23 @@ export class ModelActivationsHelper {
   }
 
   public getNeuronXYZNorm(nIdx: number) {
-    const layerIdx = this.getLayerIdx(nIdx);
     // Get's xyz values (in range -1:1) for neuron by index
-    if (layerIdx == 0) {
-      const row = Math.floor(nIdx / this.input2DSideLength);
-      const col = nIdx % this.input2DSideLength;
+    const layerIdx = this.getLayerIdx(nIdx);
+    const localNIdx = nIdx - this.layerStartIdxs[layerIdx];
+
+    // if layer can form a perfect square... then format 2D
+    if (this.getIsLayerSquare(layerIdx)) {
+      const sideLength = this.get2DSideLength(layerIdx);
+      const row = Math.floor(localNIdx / sideLength);
+      const col = localNIdx % sideLength;
       return [
-        (2 * col) / this.input2DSideLength - 1,
+        (2 * col) / (sideLength - 1) - 1,
         (2 * layerIdx) / (this.nLayers - 1) - 1,
-        1 - (2 * row) / this.input2DSideLength,
+        1 - (2 * row) / (sideLength - 1),
       ];
     }
 
-    const localNIdx = nIdx - this.layerStartIdxs[layerIdx];
+    // Otherwise, format as 1D
     return [
       (2 * localNIdx) / this.layerSizes[layerIdx] - 1,
       (2 * layerIdx) / (this.nLayers - 1) - 1,

@@ -25,10 +25,9 @@ const ActivationVisual = ({ modelConfig, ...props }: ActivationVisualProps) => {
   const forwardPropSec = 5;
   const cubeSideLength = 0.35;
   const cubeSpacingScalar = 1;
-  const pixBounds =
-    helper.input2DSideLength * cubeSpacingScalar * cubeSideLength;
-  const boundsX = helper.maxNeuronsX * cubeSpacingScalar * cubeSideLength;
-  const boundsY = 20 * helper.maxNeuronsY * cubeSpacingScalar * cubeSideLength;
+  const boundsX = cubeSpacingScalar * cubeSideLength;
+  const boundsY = 40 * cubeSpacingScalar * cubeSideLength;
+  const boundsZ = cubeSpacingScalar * cubeSideLength;
   const neuronGeo = useMemo(() => {
     return new BoxGeometry(cubeSideLength, cubeSideLength, cubeSideLength, 1);
   }, []);
@@ -134,20 +133,20 @@ const ActivationVisual = ({ modelConfig, ...props }: ActivationVisualProps) => {
     for (let sIdx = 0; sIdx < flattened.length; sIdx++) {
       srcIdx = flattened[sIdx].srcIdx;
       dstIdx = flattened[sIdx].dstIdx;
-      let [x, y, z] = helper.getNeuronXYZNorm(srcIdx);
-      x *= helper.getLayerIdx(srcIdx) == 0 ? pixBounds : boundsX;
-      y *= boundsY;
-      z *= helper.getLayerIdx(srcIdx) == 0 ? pixBounds : 1;
-      let [x2, y2, z2] = helper.getNeuronXYZNorm(dstIdx);
-      x2 *= helper.getLayerIdx(dstIdx) == 0 ? pixBounds : boundsX;
-      y2 *= boundsY;
-      z2 *= helper.getLayerIdx(dstIdx) == 0 ? pixBounds : 1;
-      linePositions[sIdx * 6 + 0] = x;
-      linePositions[sIdx * 6 + 1] = y;
-      linePositions[sIdx * 6 + 2] = z;
-      linePositions[sIdx * 6 + 3] = x2;
-      linePositions[sIdx * 6 + 4] = y2;
-      linePositions[sIdx * 6 + 5] = z2;
+      const [x, y, z] = helper.getNeuronXYZNorm(srcIdx);
+      const [x2, y2, z2] = helper.getNeuronXYZNorm(dstIdx);
+      const [sX, sY, sZ] = helper.getNeuronCountXYZForLayer(
+        helper.getLayerIdx(srcIdx)
+      );
+      const [sX2, sY2, sZ2] = helper.getNeuronCountXYZForLayer(
+        helper.getLayerIdx(dstIdx)
+      );
+      linePositions[sIdx * 6 + 0] = x * sX * boundsX;
+      linePositions[sIdx * 6 + 1] = y * sY * boundsY;
+      linePositions[sIdx * 6 + 2] = z * sZ * boundsZ;
+      linePositions[sIdx * 6 + 3] = x2 * sX2 * boundsX;
+      linePositions[sIdx * 6 + 4] = y2 * sY2 * boundsY;
+      linePositions[sIdx * 6 + 5] = z2 * sZ2 * boundsZ;
     }
     lineGeo.setPositions(linePositions);
     lineObj.computeLineDistances();
@@ -177,10 +176,14 @@ const ActivationVisual = ({ modelConfig, ...props }: ActivationVisualProps) => {
     // Setup Neuron Positions and Colors
     for (let nIdx = 0; nIdx < helper.nNeurons; nIdx++) {
       let [x, y, z] = helper.getNeuronXYZNorm(nIdx);
-      x *= helper.getLayerIdx(nIdx) == 0 ? pixBounds : boundsX;
-      y *= boundsY;
-      z *= helper.getLayerIdx(nIdx) == 0 ? pixBounds : 1;
-      tmpMatrix.setPosition(x, y, z);
+      const [sX, sY, sZ] = helper.getNeuronCountXYZForLayer(
+        helper.getLayerIdx(nIdx)
+      );
+      tmpMatrix.setPosition(
+        x * sX * boundsX,
+        y * sY * boundsY,
+        z * sZ * boundsZ
+      );
       meshRef.current.setMatrixAt(nIdx, tmpMatrix);
 
       const act = data ? helper.getActivation(data, nIdx) : 0;
