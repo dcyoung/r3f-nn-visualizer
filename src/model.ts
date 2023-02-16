@@ -58,6 +58,7 @@ export const getRandomSample = () => {
 
 export const trainModel = async (
   model: tf.Sequential,
+  nEpochs: number,
   onEpochEnd: (epoch: number, logs?: tf.Logs | undefined) => void
 ) => {
   // Grab a reference to the MNIST input values (pixel data)
@@ -86,7 +87,7 @@ export const trainModel = async (
     shuffle: true,
     validationSplit: 0.2,
     batchSize: 512,
-    epochs: 50,
+    epochs: nEpochs,
     callbacks: {
       onEpochEnd: onEpochEnd,
     },

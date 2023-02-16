@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   BoxGeometry,
+  Color,
   InstancedMesh,
   Matrix4,
   MeshBasicMaterial,
@@ -8,139 +9,26 @@ import {
 } from "three";
 import { Lut } from "three/examples/jsm/math/Lut.js";
 import { Line2, LineSegmentsGeometry, LineMaterial } from "three-stdlib";
-import { ActivationData, useActivationData } from "./appState";
+import { useActivationData } from "./appState";
 import { ModelConfig } from "./model";
-import { findLastIndex } from "./common";
+import { ModelActivationsHelper } from "./common";
+import { useFrame } from "@react-three/fiber";
 
 interface ActivationVisualProps {
   modelConfig: ModelConfig;
 }
 
-const countNeurons = (modelConfig: ModelConfig): number => {
-  return (
-    modelConfig.inputSize +
-    modelConfig.hiddenLayerSizes.reduce((prev, curr) => prev + curr) +
-    modelConfig.nClasses
-  );
-};
-
-const countSynapses = (modelConfig: ModelConfig): number => {
-  let total = 0;
-  const layerSizes = [...modelConfig.hiddenLayerSizes, modelConfig.nClasses];
-  layerSizes.forEach((n, i) => {
-    const inputSize = i == 0 ? modelConfig.inputSize : layerSizes[i - 1];
-    total += n * inputSize;
-  });
-  return total;
-};
-
-class ModelActivationsHelper {
-  public readonly modelConfig: ModelConfig;
-  public get layerSizes() {
-    return [
-      this.modelConfig.inputSize,
-      ...this.modelConfig.hiddenLayerSizes,
-      this.modelConfig.nClasses,
-    ];
-  }
-  public get layerStartIdxs() {
-    const out = [0];
-    for (let i = 0; i < this.layerSizes.length - 1; i++) {
-      out.push(out[i] + this.layerSizes[i]);
-    }
-    return out;
-  }
-
-  public get nNeurons() {
-    return countNeurons(this.modelConfig);
-  }
-  public get nSynapses() {
-    return countSynapses(this.modelConfig);
-  }
-
-  public get input2DSideLength() {
-    return Math.sqrt(this.modelConfig.inputSize);
-  }
-
-  public get maxX() {
-    return Math.max(...[this.input2DSideLength, ...this.layerSizes.slice(1)]);
-  }
-
-  public get maxY() {
-    return this.layerSizes.length;
-  }
-
-  public getLayerIdx(nIdx: number) {
-    return findLastIndex(this.layerStartIdxs, (v) => v <= nIdx);
-  }
-
-  public getActivation(data: ActivationData, nIdx: number) {
-    const layerIdx = this.getLayerIdx(nIdx);
-    if (layerIdx == 0) {
-      return data.modelInput[nIdx];
-    }
-    const localNIdx = nIdx - this.layerStartIdxs[layerIdx];
-    return data.modelActivations[layerIdx - 1][localNIdx];
-  }
-
-  public getNeuronXYZNorm(nIdx: number) {
-    const layerIdx = this.getLayerIdx(nIdx);
-    // Get's xyz values (in range -1:1) for neuron by index
-    if (layerIdx == 0) {
-      const row = Math.floor(nIdx / this.input2DSideLength);
-      const col = nIdx % this.input2DSideLength;
-      return [
-        (2 * col) / this.input2DSideLength - 1,
-        (2 * layerIdx) / this.layerSizes.length - 1,
-        1 - (2 * row) / this.input2DSideLength,
-      ];
-    }
-
-    const localNIdx = nIdx - this.layerStartIdxs[layerIdx];
-    return [
-      (2 * localNIdx) / this.layerSizes[layerIdx] - 1,
-      (2 * layerIdx) / this.layerSizes.length - 1,
-      0,
-    ];
-  }
-
-  public getDstNeuronIdxs(nIdx: number) {
-    const layerIdx = this.getLayerIdx(nIdx);
-    const nextLayerIdx = layerIdx + 1;
-    if (nextLayerIdx >= this.layerSizes.length) {
-      // output layer... no further connections
-      return [];
-    }
-
-    const start = this.layerStartIdxs[nextLayerIdx];
-    const end = start + this.layerSizes[nextLayerIdx];
-    return Array.from({ length: this.nNeurons })
-      .map((_, i) => i)
-      .slice(start, end);
-  }
-
-  public getSynapseMap() {
-    return Array.from({ length: this.nNeurons }).map((_, i) =>
-      this.getDstNeuronIdxs(i)
-    );
-  }
-
-  constructor(modelConfig: ModelConfig) {
-    this.modelConfig = modelConfig;
-  }
-}
-
-const ActivationVisual = ({
-  modelConfig,
-  ...props
-}: ActivationVisualProps): JSX.Element => {
+const ActivationVisual = ({ modelConfig, ...props }: ActivationVisualProps) => {
   const helper = new ModelActivationsHelper(modelConfig);
+  const visualizePropagation = false;
+  const visualizePropagationSweep = false;
+  const forwardPropSec = 5;
   const cubeSideLength = 0.35;
   const cubeSpacingScalar = 1;
   const pixBounds =
     helper.input2DSideLength * cubeSpacingScalar * cubeSideLength;
-  const boundsX = helper.maxX * cubeSpacingScalar * cubeSideLength;
-  const boundsY = 20 * helper.maxY * cubeSpacingScalar * cubeSideLength;
+  const boundsX = helper.maxNeuronsX * cubeSpacingScalar * cubeSideLength;
+  const boundsY = 20 * helper.maxNeuronsY * cubeSpacingScalar * cubeSideLength;
   const neuronGeo = useMemo(() => {
     return new BoxGeometry(cubeSideLength, cubeSideLength, cubeSideLength, 1);
   }, []);
@@ -171,54 +59,119 @@ const ActivationVisual = ({
   const meshRef = useRef<InstancedMesh>(null!);
   const tmpMatrix = useMemo(() => new Matrix4(), []);
 
-  const updateSynapseColors = () => {
-    let sIdx = 0;
-    helper.getSynapseMap().forEach((dstIdxs, srcIdx) => {
-      const c = lut.getColor(data ? helper.getActivation(data, srcIdx) : 0);
-      dstIdxs.forEach((dstIdx) => {
-        lineColors[sIdx * 6 + 0] = c.r;
-        lineColors[sIdx * 6 + 1] = c.g;
-        lineColors[sIdx * 6 + 2] = c.b;
-        lineColors[sIdx * 6 + 3] = c.r;
-        lineColors[sIdx * 6 + 4] = c.g;
-        lineColors[sIdx * 6 + 5] = c.b;
-        lineGeo.attributes.color.setX(sIdx, c.r);
-        lineGeo.attributes.color.setX(sIdx + 1, c.g);
-        lineGeo.attributes.color.setX(sIdx + 2, c.b);
-        lineGeo.attributes.color.setX(sIdx + 3, c.r);
-        lineGeo.attributes.color.setX(sIdx + 4, c.g);
-        lineGeo.attributes.color.setX(sIdx + 5, c.b);
-        sIdx += 1;
-      });
-    });
+  const updateSynapseColors = (
+    normPropagationProgress: number = 0,
+    sweep: boolean = true
+  ) => {
+    let srcIdx = 0;
+    let [r, g, b] = [0, 0, 0];
+    let [r2, g2, b2] = [0, 0, 0];
+    let tmpColor = new Color();
+    let cUnreached = new Color("black");
+    let prevSrcIdx = -1;
+    let normLayerIdx = -1;
+    let delta = -1;
+    const normStepBetweenLayers = 1 / (helper.nLayers - 1);
+    const flattened = helper.getFlattenedSynapseMap();
+    for (let sIdx = 0; sIdx < flattened.length; sIdx++) {
+      srcIdx = flattened[sIdx].srcIdx;
+      if (srcIdx !== prevSrcIdx) {
+        prevSrcIdx = srcIdx;
+        normLayerIdx = helper.getLayerIdx(srcIdx) / (helper.nLayers - 1);
+
+        delta = normPropagationProgress - normLayerIdx;
+        if (delta >= 0) {
+          // propagation has passed this layer... we should use activation to color
+          [r, g, b] = lut
+            .getColor(data ? helper.getActivation(data, srcIdx) : 0)
+            .toArray();
+
+          if (sweep && delta >= 2 * normStepBetweenLayers) {
+            // propagation is far beyond this layer... deactivate it for a sweeping look
+            [r2, g2, b2] = tmpColor
+              .setRGB(r, g, b)
+              .lerp(
+                cUnreached,
+                (delta % normStepBetweenLayers) / normStepBetweenLayers
+              );
+            [r, g, b] = cUnreached.toArray();
+          } else if (delta >= normStepBetweenLayers) {
+            // propagation has passed the next layer... color it the same
+            [r2, g2, b2] = [r, g, b];
+          } else {
+            // propagation has NOT reached the next layer... create a gradient
+            [r2, g2, b2] = tmpColor
+              .setRGB(r, g, b)
+              .lerp(cUnreached, delta / normStepBetweenLayers);
+          }
+        } else {
+          // Both are unreached
+          [r, g, b] = cUnreached.toArray();
+          [r2, g2, b2] = cUnreached.toArray();
+        }
+      }
+      lineColors[sIdx * 6 + 0] = r;
+      lineColors[sIdx * 6 + 1] = g;
+      lineColors[sIdx * 6 + 2] = b;
+      lineColors[sIdx * 6 + 3] = r2;
+      lineColors[sIdx * 6 + 4] = g2;
+      lineColors[sIdx * 6 + 5] = b2;
+      lineGeo.attributes.color.setX(sIdx + 0, r);
+      lineGeo.attributes.color.setX(sIdx + 1, g);
+      lineGeo.attributes.color.setX(sIdx + 2, b);
+      lineGeo.attributes.color.setX(sIdx + 3, r2);
+      lineGeo.attributes.color.setX(sIdx + 4, g2);
+      lineGeo.attributes.color.setX(sIdx + 5, b2);
+    }
     lineGeo.setColors(lineColors);
     lineGeo.attributes.color.needsUpdate = true;
   };
 
   const updateSynapsePositions = () => {
-    let sIdx = 0;
-    helper.getSynapseMap().forEach((dstIdxs, srcIdx) => {
-      dstIdxs.forEach((dstIdx) => {
-        let [x, y, z] = helper.getNeuronXYZNorm(srcIdx);
-        x *= helper.getLayerIdx(srcIdx) == 0 ? pixBounds : boundsX;
-        y *= boundsY;
-        z *= helper.getLayerIdx(srcIdx) == 0 ? pixBounds : 1;
-        let [x2, y2, z2] = helper.getNeuronXYZNorm(dstIdx);
-        x2 *= helper.getLayerIdx(dstIdx) == 0 ? pixBounds : boundsX;
-        y2 *= boundsY;
-        z2 *= helper.getLayerIdx(dstIdx) == 0 ? pixBounds : 1;
-        linePositions[sIdx * 6 + 0] = x;
-        linePositions[sIdx * 6 + 1] = y;
-        linePositions[sIdx * 6 + 2] = z;
-        linePositions[sIdx * 6 + 3] = x2;
-        linePositions[sIdx * 6 + 4] = y2;
-        linePositions[sIdx * 6 + 5] = z2;
-        sIdx += 1;
-      });
-    });
+    let srcIdx = 0,
+      dstIdx = 0;
+    const flattened = helper.getFlattenedSynapseMap();
+    for (let sIdx = 0; sIdx < flattened.length; sIdx++) {
+      srcIdx = flattened[sIdx].srcIdx;
+      dstIdx = flattened[sIdx].dstIdx;
+      let [x, y, z] = helper.getNeuronXYZNorm(srcIdx);
+      x *= helper.getLayerIdx(srcIdx) == 0 ? pixBounds : boundsX;
+      y *= boundsY;
+      z *= helper.getLayerIdx(srcIdx) == 0 ? pixBounds : 1;
+      let [x2, y2, z2] = helper.getNeuronXYZNorm(dstIdx);
+      x2 *= helper.getLayerIdx(dstIdx) == 0 ? pixBounds : boundsX;
+      y2 *= boundsY;
+      z2 *= helper.getLayerIdx(dstIdx) == 0 ? pixBounds : 1;
+      linePositions[sIdx * 6 + 0] = x;
+      linePositions[sIdx * 6 + 1] = y;
+      linePositions[sIdx * 6 + 2] = z;
+      linePositions[sIdx * 6 + 3] = x2;
+      linePositions[sIdx * 6 + 4] = y2;
+      linePositions[sIdx * 6 + 5] = z2;
+    }
     lineGeo.setPositions(linePositions);
     lineObj.computeLineDistances();
   };
+
+  useFrame(({ clock }) => {
+    const normProgress = visualizePropagation
+      ? (clock.getElapsedTime() % forwardPropSec) / forwardPropSec
+      : 1.0;
+    // update synapses
+    updateSynapseColors(normProgress, visualizePropagationSweep);
+
+    // update neurons
+    // for (let nIdx = 0; nIdx < helper.nNeurons; nIdx++) {
+    //   const normLayerIdx = helper.getLayerIdx(nIdx) / (helper.nLayers - 1);
+    //   if (normLayerIdx <= normProgress) {
+    //     const act = data ? helper.getActivation(data, nIdx) : 0;
+    //     meshRef.current.setColorAt(nIdx, lut.getColor(act));
+    //   } else {
+    //     meshRef.current.setColorAt(nIdx, new Color("black"));
+    //   }
+    // }
+    // meshRef.current.instanceColor!.needsUpdate = true;
+  });
 
   useEffect(() => {
     // Setup Neuron Positions and Colors
@@ -253,9 +206,6 @@ const ActivationVisual = ({
       meshRef.current.setColorAt(nIdx, lut.getColor(act));
     }
     meshRef.current.instanceColor!.needsUpdate = true;
-
-    // Update synapses colors
-    updateSynapseColors();
   }, [helper, data]);
 
   return (

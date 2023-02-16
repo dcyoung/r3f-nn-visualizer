@@ -10,12 +10,13 @@ body,
   margin: 0;
   padding: 0;
   overflow: hidden;
+  background: #eceff1
 }
 
 body {
   font-family: "Inter var", sans-serif;
   /* color: white; */
-  color: black;
+  color: #424242;
   user-select: none;
   position: fixed;
 }

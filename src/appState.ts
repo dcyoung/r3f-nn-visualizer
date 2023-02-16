@@ -1,16 +1,5 @@
 import create from "zustand";
-
-export class ActivationData {
-  public readonly modelInput: Float32Array | Uint8Array | Int32Array;
-  public readonly modelActivations: (Float32Array | Uint8Array | Int32Array)[];
-  constructor(
-    modelInput: Float32Array | Uint8Array | Int32Array,
-    modelActivations: (Float32Array | Uint8Array | Int32Array)[]
-  ) {
-    this.modelInput = modelInput;
-    this.modelActivations = modelActivations;
-  }
-}
+import { ActivationData } from "./common";
 
 interface IAppState {
   activationData: ActivationData | null;
