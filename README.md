@@ -6,6 +6,10 @@ An interactive neural network visualizer built with tf.js & react-three-fiber
 
 ---
 
+[![docs/capture.gif](docs/capture.gif)](https://dcyoung.github.io/r3f-nn-visualizer/)
+
+---
+
 ## Quickstart
 
 ```bash
