@@ -71,14 +71,16 @@ const ModelManager = ({ model, ...props }: ModelManagerProps) => {
         <p>Using trained model w/ final accuracy {modelValAcc}</p>
       ) : isTraining ? (
         <>
-          <p>Training the model: </p>
-          <ProgressBar completed={(100 * epochLogs.length) / nEpochs} />
+          <ProgressBar
+            title="Training"
+            completed={(100 * epochLogs.length) / nEpochs}
+          />
           <p>Val Acc: {modelValAcc}</p>
         </>
       ) : (
         <>
           <button
-            style={{ background: "#1e88e5" }}
+            style={{ height: "75%" }}
             disabled={trained}
             onClick={async () => {
               setIsTraining(true);
@@ -86,9 +88,9 @@ const ModelManager = ({ model, ...props }: ModelManagerProps) => {
               onTrainingComplete(history);
             }}
           >
-            Train the Model
+            Train Model
           </button>
-          <div style={{ overflow: "scroll" }}>
+          <div className="hideScroll">
             <p>Activations will be random. Try training the model.</p>
           </div>
         </>

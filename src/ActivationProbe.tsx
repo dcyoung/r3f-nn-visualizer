@@ -48,10 +48,19 @@ const ActivationProbe = ({
   }, []);
 
   return (
-    <>
+    <div
+      style={{
+        height: "100%",
+        display: "flex",
+        flexDirection: "row",
+        justifyContent: "left",
+        gap: "20px",
+        alignItems: "center",
+      }}
+    >
       <button
         disabled={disabled}
-        style={{ background: "#1e88e5" }}
+        style={{ height: "75%" }}
         onClick={onGetActivation}
       >
         New Activations
@@ -60,9 +69,9 @@ const ActivationProbe = ({
         ref={canvasRef}
         width={28}
         height={28}
-        style={{ margin: "4px" }}
+        // style={{ margin: "4px" }}
       />
-    </>
+    </div>
   );
 };
 
