@@ -19,7 +19,7 @@ jobs:
     needs: create-page-host
     runs-on: ubuntu-latest
     permissions:
-      pull-requests: true
+      pull-requests: write
     environment:
       name: pr-staging
       url: https://dcyoung.github.io/${{ env.PR_REPO_NAME }}/
