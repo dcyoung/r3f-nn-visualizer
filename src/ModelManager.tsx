@@ -57,6 +57,8 @@ const ModelManager = ({ model, ...props }: ModelManagerProps) => {
   return (
     <div
       style={{
+        width: "100%",
+        height: "10%",
         display: "flex",
         flexDirection: "row",
         justifyContent: "left",
@@ -71,7 +73,7 @@ const ModelManager = ({ model, ...props }: ModelManagerProps) => {
         <>
           <p>Training the model: </p>
           <ProgressBar completed={(100 * epochLogs.length) / nEpochs} />
-          <p>Val Accuracy: {modelValAcc}</p>
+          <p>Val Acc: {modelValAcc}</p>
         </>
       ) : (
         <>
@@ -86,10 +88,9 @@ const ModelManager = ({ model, ...props }: ModelManagerProps) => {
           >
             Train the Model
           </button>
-          <p>
-            An untrained model produces RANDOM activations. Try training the
-            model.
-          </p>
+          <div style={{ overflow: "scroll" }}>
+            <p>Activations will be random. Try training the model.</p>
+          </div>
         </>
       )}
     </div>

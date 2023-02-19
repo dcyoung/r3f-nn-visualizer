@@ -19,21 +19,23 @@ const App = () => {
   return (
     <Suspense fallback={<span>loading...</span>}>
       <ModelManager model={model} />
-      <Canvas
-        camera={{
-          fov: 45,
-          near: 1,
-          far: 1000,
-          position: [-40, -45, 8],
-          up: [0, 0, 1],
-        }}
-      >
-        <color attach="background" args={[backgroundColor]} />
-        {/* <axesHelper /> */}
-        <ambientLight />
-        <ActivationVisual modelConfig={modelConfig} />
-        <OrbitControls makeDefault />
-      </Canvas>
+      <div style={{ width: "100%", height: "90vh" }}>
+        <Canvas
+          camera={{
+            fov: 45,
+            near: 1,
+            far: 1000,
+            position: [-40, -45, 8],
+            up: [0, 0, 1],
+          }}
+        >
+          <color attach="background" args={[backgroundColor]} />
+          {/* <axesHelper /> */}
+          <ambientLight />
+          <ActivationVisual modelConfig={modelConfig} />
+          <OrbitControls makeDefault />
+        </Canvas>
+      </div>
     </Suspense>
   );
 };
