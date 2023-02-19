@@ -41,15 +41,26 @@ body {
   color: #606060;
 }
 
-button.block {
-  display: block;
-  width: 100%;
+button {
+  background: #1e88e5;
+  background-color: #1e88e5;
+  border-radius: 0.5em;
+  box-shadow: 0em 0.2em 0.2em #424242;
   border: none;
-  padding: 14px 28px;
+  color: black;
+  /* color: white; */
+  /* padding: 1em 2em; */
   text-align: center;
+  /* text-decoration: none; */
+  /* display: inline-block; */
+  font-size: 1em;
 }
 
-select.block {
-  width: 100%;
-  text-align: center;
+/* Hide scrollbar for Chrome, Safari and Opera */
+.hideScroll::-webkit-scrollbar {
+  display: none;
+}
+.hideScroll {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
 }

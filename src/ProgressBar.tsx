@@ -1,8 +1,13 @@
 interface ProgressBarProps {
   completed: number;
   bgColor?: string;
+  title?: string;
 }
-const ProgressBar = ({ completed, bgColor = "#1e88e5" }: ProgressBarProps) => {
+const ProgressBar = ({
+  completed,
+  bgColor = "#1e88e5",
+  title = "Progress",
+}: ProgressBarProps) => {
   const containerStyles = {
     width: "100%",
     backgroundColor: "#e0e0de",
@@ -26,7 +31,7 @@ const ProgressBar = ({ completed, bgColor = "#1e88e5" }: ProgressBarProps) => {
   return (
     <div style={containerStyles}>
       <div style={fillerStyles}>
-        <span style={labelStyles}>{`${completed}%`}</span>
+        <span style={labelStyles}>{`${title}:${completed}%`}</span>
       </div>
     </div>
   );

@@ -57,6 +57,8 @@ const ModelManager = ({ model, ...props }: ModelManagerProps) => {
   return (
     <div
       style={{
+        width: "100%",
+        height: "10%",
         display: "flex",
         flexDirection: "row",
         justifyContent: "left",
@@ -69,14 +71,16 @@ const ModelManager = ({ model, ...props }: ModelManagerProps) => {
         <p>Using trained model w/ final accuracy {modelValAcc}</p>
       ) : isTraining ? (
         <>
-          <p>Training the model: </p>
-          <ProgressBar completed={(100 * epochLogs.length) / nEpochs} />
-          <p>Val Accuracy: {modelValAcc}</p>
+          <ProgressBar
+            title="Training"
+            completed={(100 * epochLogs.length) / nEpochs}
+          />
+          <p>Val Acc: {modelValAcc}</p>
         </>
       ) : (
         <>
           <button
-            style={{ background: "#1e88e5" }}
+            style={{ height: "75%" }}
             disabled={trained}
             onClick={async () => {
               setIsTraining(true);
@@ -84,12 +88,11 @@ const ModelManager = ({ model, ...props }: ModelManagerProps) => {
               onTrainingComplete(history);
             }}
           >
-            Train the Model
+            Train Model
           </button>
-          <p>
-            An untrained model produces RANDOM activations. Try training the
-            model.
-          </p>
+          <div className="hideScroll">
+            <p>Activations will be random. Try training the model.</p>
+          </div>
         </>
       )}
     </div>
