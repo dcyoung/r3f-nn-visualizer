@@ -31,7 +31,7 @@ const ProgressBar = ({
   return (
     <div style={containerStyles}>
       <div style={fillerStyles}>
-        <span style={labelStyles}>{`${title}:${completed}%`}</span>
+        <span style={labelStyles}>{`${title}${completed}%`}</span>
       </div>
     </div>
   );

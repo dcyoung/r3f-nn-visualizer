@@ -1,6 +1,7 @@
 import * as tf from "@tensorflow/tfjs";
 // @ts-ignore
 import { TRAINING_DATA as ALL_DATA } from "https://storage.googleapis.com/jmstore/TensorFlowJS/EdX/TrainingData/mnist.js";
+import { ActivationData } from "./common";
 
 export interface ModelConfig {
   inputSize: number;
@@ -97,4 +98,43 @@ export const trainModel = async (
   OUTPUTS_TENSOR_ONE_HOT.dispose();
 
   return history;
+};
+
+export class EpochLog {
+  epoch: number;
+  nEpochs: number;
+  logs: tf.Logs | undefined;
+
+  constructor(epoch: number, nEpochs: number, logs?: tf.Logs | undefined) {
+    this.epoch = epoch;
+    this.nEpochs = nEpochs;
+    this.logs = logs;
+  }
+
+  toString(): string {
+    return (
+      "Data for epoch " +
+      this.epoch +
+      ", " +
+      JSON.stringify(this.logs, function (key, val) {
+        return val.toFixed ? Number(val.toFixed(3)) : val;
+      })
+    );
+  }
+}
+
+export const probeModelActivation = async (
+  sample: tf.Tensor<tf.Rank>,
+  model: tf.Sequential
+) => {
+  // const layerInputs_BK = [tf.zeros([1, 28 * 28 * 1])];
+  const layerInputs: tf.Tensor<tf.Rank>[] = [sample];
+  model.layers.forEach((layer, i) => {
+    const layerOutput = layer.apply(layerInputs[i]);
+    layerInputs.push(layerOutput as tf.Tensor<tf.Rank>);
+  });
+  return new ActivationData(
+    await layerInputs[0].data(),
+    await Promise.all(layerInputs.slice(1).map(async (t) => await t.data()))
+  );
 };

@@ -16,9 +16,14 @@ import { useFrame } from "@react-three/fiber";
 
 interface ActivationVisualProps {
   modelConfig: ModelConfig;
+  showSynapses?: boolean;
 }
 
-const ActivationVisual = ({ modelConfig, ...props }: ActivationVisualProps) => {
+const ActivationVisual = ({
+  modelConfig,
+  showSynapses = true,
+  ...props
+}: ActivationVisualProps) => {
   const helper = new ModelActivationsHelper(modelConfig);
   const visualizePropagation = false;
   const visualizePropagationSweep = false;
@@ -219,23 +224,25 @@ const ActivationVisual = ({ modelConfig, ...props }: ActivationVisualProps) => {
         receiveShadow={true}
         args={[neuronGeo, neuronMat, helper.nNeurons]}
       />
-      <primitive object={lineObj}>
-        <primitive object={lineGeo} attach="geometry">
-          <bufferAttribute
-            attach="attributes-color"
-            count={helper.nSynapses}
-            array={lineColors}
-            itemSize={lineColors.length / helper.nSynapses}
+      {showSynapses && (
+        <primitive object={lineObj}>
+          <primitive object={lineGeo} attach="geometry">
+            <bufferAttribute
+              attach="attributes-color"
+              count={helper.nSynapses}
+              array={lineColors}
+              itemSize={lineColors.length / helper.nSynapses}
+            />
+          </primitive>
+          <primitive
+            object={lineMat}
+            attach="material"
+            vertexColors={true}
+            // resolution={new Vector2(512, 512)}
+            // lineWidth={0.1}
           />
         </primitive>
-        <primitive
-          object={lineMat}
-          attach="material"
-          vertexColors={true}
-          // resolution={new Vector2(512, 512)}
-          // lineWidth={0.1}
-        />
-      </primitive>
+      )}
     </>
   );
 };
